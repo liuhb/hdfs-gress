@@ -1,80 +1,59 @@
-A simple utility to copy files from a local file system into HDFS, and vice-versa
+拷贝本地文件到HDFS
 =================================================================================
 
-## Motivation
+## 动机
 
-Many projects require an automated mechanism to copy files between HDFS from local disk.  You can either
-roll your own code, or use something like Flume which may be overkill if that's your sole usage.
-This is a light-weight utility which simply copies all the files in a source directory into a destination directory.
-The source or destination directories can be local, HDFS, or any other Hadoop FileSystem.
+很多项目需要把本地文件拷贝到hdfs集群，本程序能自动扫描本地文件并上传到hdfs集群。
 
-## Features
+##  特性
 
-* After a successful file copy you can either remove the source file, or have it moved into another directory.
-* Destination files can be compressed as part of the write codec with any compression codec which extends `org.apache.hadoop.io.compress.CompressionCodec`.
-* Capability to write "done" file after completion of copy
-* Verify destination file post-copy with CRC32 checksum comparison with source
-* Ignores hidden files (filenames that start with ".")
-* Customizable destination via a script which can be called for every source file.  Or alternatively let the utility
-know a single destination directory
-* Customizable pre-processing of file prior to transfer via script
-and all files are copied into that location.
-* A daemon mode which is compatible with `inittab` respawn
-* Multi-threaded data transfer
-
-## Important Considerations
-
-When using this utility, as well as in general when dealing with the automated transfer of files, it's probably
-worth bearing the following items in mind.
-
-* Files must be moved into the source directory, which is an atomic operation in Linux and HDFS.  If files are copied or
-written directly in the source directory the result of the gress is undetermined.  The caveat here is that
-you can write to a hidden file in the directory (filenames that start with ".") which will be ignored, and after the
-write is complete remove the leading period from the filename at which point it will be copied next time the script runs.
-* Make sure your filenames are globally unique to avoid name collisions in the destination file system.
-* Ideally write a custom script to map the source files into a destination directory using a data partitioning scheme that makes
- sense for your data.  For example if you are moving log files into HDFS, then you may want to extract the date/time from
- the filename and write all files for a given day into a separate directory.
-*  If your files are small in size then you may want to consider aggregating them together.  HDFS and MapReduce don't
-work well with large numbers of small files.  This utility doesn't currently support such aggregation.
-* Subdirectories and their contents aren't currently supported
-* All paths must all be in HDFS URI form, with a scheme.  For example /tmp on the local
- filesystem would be `file:/tmp`, and /app in HDFS would be `hdfs:/app` (assuming you wanted to use the default NameNode and
- port settings defined in `core-site.xml` - if you didn't the URI can contain the hostname and port of a different Hadoop cluster).
-
-## License
-
-Apache licensed.
-
-## Usage
-
-To get started, simply:
-
-1. Download, and run `mvn package`
-2. Copy the generated tarball under `target/` to a machine that has access to Hadoop, and untar.
-3. Edit `conf/gress-env.sh` to set the location of your Hadoop script
-4. Edit `conf/gress.conf` and set the properties for your environment
-5. Run!
+* 拷贝成功后，可以选择保留或删除文件
+* 拷贝文件过程可以支持压缩例如：org.apache.hadoop.io.compress.CompressionCodec
+* 拷贝文件可以支持解压，目前只能解压gz文件
+* 通过CRC32与文件大小校验，保障传输的准确性。（对于压缩和解压文件，只提供CRC32校验)
+* 忽略隐藏文件".*"
+* 传输完成后执行定制化脚本，可满足不同项目需要
+* 传输前执行定制化脚本。可以灵活满足项目
+* 可处理csv文件，自动忽略首行
+* 多线程传输
+* 传输后，把文件合并到大文件中（目前正在开发中。。。）
 
 
-### Key Settings in the gress Properties File
+## 重要条件
 
-The required properties which you'll need to set in `conf/gress.conf` are:
+在使用本工具时请注意下面事项
 
-1.  "DATASOURCE_NAME", a logical name for the data being transferred.
-2.  "SRC_DIR", which is the source directory for the gress.
-3.  "WORK_DIR", which is the where files from the source directory are moved prior to copying them to the destination.
-4.  "COMPLETE_DIR", which is where files are moved once the copy has succeeded successfully.
-5.  "ERROR_DIR", where files are moved if the copy failed.
-6.  "DEST_STAGING_DIR", the staging directory on the destination file system where the file is copied.  When the copy
-completes files are then moved into "DEST_DIR".
-7.  "DEST_DIR", the destination directory for files.
+* 文件在移动到原目录时，最好先生成到同一文件系统的其他目录，然后再mv到源目录。或先生成隐藏文件（以 “.”打头的文件）
+* 保证文件名称唯一性。
+* 所有的路径必须要带上模式，例如 hdfs 文件为 'hdfs:/app' 本地文件为 'file:/tmp'
+
+## 使用
+
+下载源代码
+
+1. 运行 `mvn package`
+2. 拷贝 tar 包到目标主机并解压
+3. 编辑 `conf/gress-env.sh` 指定hadoop路径
+4. 编辑 `conf/gress.conf` 相关参数
+5. 运行
 
 
-### Example 1
+### gress.conf 的关键属性
 
-To copy from the localhost directory `/tmp/gress/in` to the HDFS directory `/incoming/`.  Note that the Hadoop URI is used, which is a
- requirement for all paths.
+    必须的配置项
+
+1.  "DATASOURCE_NAME", 逻辑数据源名称
+2.  "SRC_DIR", 原路径.
+3.  "WORK_DIR", 工作路径，copy文件时先copy到work_dir .
+4.  "COMPLETE_DIR", copy成功后保存本地文件的副本.
+5.  "ERROR_DIR", copy出错后保存到本地的错误文件
+6.  "DEST_STAGING_DIR", hdfs上的缓存文件，待copy完成后mv 到目标文件夹
+7.  "DEST_DIR", 目标文件夹
+
+
+### 实例 1
+
+copy  `/tmp/gress/in` 下的文件到 HDFS 目录 `/incoming/`.
 
 <pre><code>shell$ cat conf/examples/basic.conf
 DATASOURCE_NAME = test
@@ -86,23 +65,21 @@ DEST_STAGING_DIR = hdfs:/incoming/stage
 DEST_DIR = hdfs:/incoming
 </code></pre>
 
-Run the gress in foreground mode in a console:
+在控制台运行gress.sh
 
 <pre><code>shell$ bin/gress.sh \
   --config-file /path/to/gress/conf/examples/basic.conf
 </code></pre>
 
-In another console create an empty file and watch the gress do its stuff:
+在另外一个控制台运行
 
 <pre><code>shell$ echo "test" > /tmp/gress/in/test.txt
 </code></pre>
 
 
-### Example 2
+### 实例2
 
-Same directories as Example 1, but LZOP-compress and index files as they are written to the destination.
-We're also verifying the write, which reads the file after the write has completed and compares the
-checksum with the original file.  This can work with or without compression.
+压缩并上传数据，其中压缩COMPRESSION_CODEC 支持hadoop自带的所有格式
 
 <pre><code>shell$ cat conf/examples/lzop-verify.conf
 DATASOURCE_NAME = test
@@ -117,18 +94,26 @@ CREATE_LZO_INDEX = true
 VERIFY = true
 </code></pre>
 
-The gress can be executed in the same fashion as we saw in Example 1.
+### 实例3
 
-### Example 3
+解压并上传数据，目前只支持gz解压
 
-In our final example we can use the same local source directory, but use it in conjunction with
-a script to dynamically map the source filename to a HDFS directory.
+<pre><code>shell$ cat conf/examples/lzop-verify.conf
+DATASOURCE_NAME = test
+SRC_DIR = file:/tmp/gress/in
+WORK_DIR = file:/tmp/gress/work
+COMPLETE_DIR = file:/tmp/gress/complete
+ERROR_DIR = file:/tmp/gress/error
+DEST_STAGING_DIR = hdfs:/incoming/stage
+DEST_DIR = hdfs:/incoming
+UNCOMPRESSTYPE= gzip
+VERIFY = true
+</code></pre>
 
-The source filename in URI form will be supplied to the standard input of the script, and the
-script should produce the target destination file in URI form on standard output as a single line.
 
-The script below, which is in Python (but can be any executable), extracts the date from the filename and
-uses it to write into a HDFS directory `/data/YYYY/MM/DD/<original-filename>`.
+
+### 实例4
+利用脚本上传到目标的不同目录
 
 <pre><code>shell$ cat bin/sample-python.py
 #!/usr/bin/python
@@ -155,8 +140,7 @@ hdfs_dest="hdfs:/data/%s/%s/%s/%s" % (year, mon, day, filename)
 print hdfs_dest,
 </code></pre>
 
-Our configuration needs to include the absolute path to the Python script.  Note too that we don't
-define "DEST_DIR", since it and "SCRIPT" are mutually exclusive.
+定义SCRIPT脚本
 
 <pre><code>shell$ cat conf/examples/dynamic-dest.conf
 DATASOURCE_NAME = test
