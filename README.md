@@ -16,7 +16,8 @@
 * 传输前执行定制化脚本。可以灵活满足项目
 * 可处理csv文件，自动忽略首行
 * 多线程传输
-* 传输后，把文件合并到大文件中（目前正在开发中。。。）
+* 传输后，把文件合并到大文件中
+* 可设置后台守护运行
 
 
 ## 重要条件
@@ -63,6 +64,7 @@ COMPLETE_DIR = file:/tmp/gress/complete
 ERROR_DIR = file:/tmp/gress/error
 DEST_STAGING_DIR = hdfs:/incoming/stage
 DEST_DIR = hdfs:/incoming
+DAEMON = true
 </code></pre>
 
 在控制台运行gress.sh
@@ -140,7 +142,7 @@ hdfs_dest="hdfs:/data/%s/%s/%s/%s" % (year, mon, day, filename)
 print hdfs_dest,
 </code></pre>
 
-定义SCRIPT脚本
+### 实例5 定义SCRIPT脚本
 
 <pre><code>shell$ cat conf/examples/dynamic-dest.conf
 DATASOURCE_NAME = test
@@ -152,8 +154,29 @@ DEST_STAGING_DIR = hdfs:/incoming/stage
 SCRIPT = /path/to/gress/bin/sample-python.py
 </code></pre>
 
-
-And you would use it as follows:
+### 实例6 合并文件上传
+<pre><code>
+DATASOURCE_NAME = test
+SRC_DIR = file:/app/data/gress/in
+WORK_DIR = file:/app/data/gress/work
+COMPLETE_DIR = file:/app/data/gress/complete
+REMOVE_AFTER_COPY = false
+ERROR_DIR = file:/app/data/gress/error
+DEST_STAGING_DIR = hdfs:/tmp/gress/stage
+#DEST_DIR = hdfs:/tmp/gress/dest
+#COMPRESSION_CODEC = org.apache.hadoop.io.compress.GzipCodec
+#CREATE_LZO_INDEX = true
+VERIFY = true
+# SCRIPT = /tmp/sample-python.py
+# WORK_SCRIPT = /tmp/sample-stage-python.py
+THREADS = 5
+#CSVHEADER = true
+#MERGESCRIPT = /tmp/merge-python.py
+#UNCOMPRESSTYPE = gzip
+MERGESCRIPT = /path/to/gress/bin/merge-python.py
+DAEMON = true
+</code></pre>
+程序使用
 
 <pre><code>shell$ touch /tmp/gress/in/apache-20110202.log
 
