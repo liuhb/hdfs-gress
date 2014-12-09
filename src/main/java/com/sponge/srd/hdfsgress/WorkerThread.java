@@ -9,12 +9,16 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.log4j.MDC;
+import sun.util.resources.LocaleNames_ko;
 
 import java.io.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.GZIPInputStream;
@@ -56,8 +60,14 @@ public class WorkerThread extends Thread {
     public void run() {
         MDC.put("threadName", this.getName());
         try {
-            while (!shuttingDown.get() && !interrupted()) {
-                doWork();
+            if (config.isDaemon()) {
+                while (!shuttingDown.get() && !interrupted()) {
+                    doWork();
+                }
+            } else {
+                while(fileSystemManager.haveFiles()) {
+                    doWork();
+                }
             }
         } catch (InterruptedException t) {
             log.warn("Caught interrupted exception, exiting");
@@ -100,7 +110,12 @@ public class WorkerThread extends Thread {
 
             // get the target HDFS file
             //
-            Path destFile = getHdfsTargetPath(srcFileStatus);
+            Path destFile = null;
+            if (config.getMergeScript() != null) {
+                destFile = getMergePathFromScript(srcFileStatus);
+            } else {
+                destFile = getHdfsTargetPath(srcFileStatus);
+            }
 
             if (config.getCodec() != null) {
                 String ext = config.getCodec().getDefaultExtension();
@@ -146,7 +161,7 @@ public class WorkerThread extends Thread {
             try {
 
                 //对于gzip格式文件进行压缩
-               if ( config.getUnCompressType().equals("gzip")) {
+                if (config.getUnCompressType() != null && config.getUnCompressType().equals("gzip")) {
                     log.info("Uncompress zip file " + srcFile.getName());
                     is = new GZIPInputStream(new BufferedInputStream(srcFs.open(srcFile)));
 
@@ -176,12 +191,12 @@ public class WorkerThread extends Thread {
             long srcFileSize = srcFs.getFileStatus(srcFile).getLen();
             long destFileSize = destFs.getFileStatus(stagingFile).getLen();
             long finalfileSize = config.isCsvHeader() ? destFileSize + descardNum : destFileSize;
-            if (config.getUnCompressType() == null && config.getCodec() == null && srcFileSize != finalfileSize ) {
+            if (config.getUnCompressType() == null && config.getCodec() == null && srcFileSize != finalfileSize) {
                 String errMsg = "File sizes don't match, source = " + srcFileSize + ", dest = " + destFileSize;
                 if (config.isCsvHeader()) {
                     errMsg = errMsg + ", descardnum = " + descardNum;
                 }
-                throw new IOException( errMsg);
+                throw new IOException(errMsg);
             }
             if (config.isCsvHeader()) {
                 log.info("Local file size = " + srcFileSize + ", HDFS file size = " + destFileSize + ", Descarded size " + descardNum);
@@ -194,7 +209,10 @@ public class WorkerThread extends Thread {
             }
 
             if (config.getMergeScript() != null) {
-                log.info("Merge " + stagingFile + " to " + config.getMergeScript());
+
+                log.info("Merge staging file '" + stagingFile + "' to destination '" + destFile + "'");
+                Utils.hdfsAppend(stagingFile, destFile, config.getConfig());
+
             } else {
 
                 if (destFs.exists(destFile)) {
@@ -224,10 +242,10 @@ public class WorkerThread extends Thread {
             // delete the staging file if it still exists
             //
             try {
-                if(destFs != null && destFs.exists(stagingFile)) {
+                if (destFs != null && destFs.exists(stagingFile)) {
                     destFs.delete(stagingFile, false);
                 }
-            } catch(Throwable t2) {
+            } catch (Throwable t2) {
                 log.error("Failed to delete staging file " + stagingFile, t2);
             }
 
@@ -275,9 +293,9 @@ public class WorkerThread extends Thread {
         if (config.getDestDir() != null) {
             if (config.getCodec() != null) {
                 return new Path(config.getDestDir(), srcFile.getPath().getName() + config.getCodec().getDefaultExtension());
-            } else if (config.getUnCompressType() != null ) {
+            } else if (config.getUnCompressType() != null) {
                 String fileName = srcFile.getPath().getName();
-                return  new Path(config.getDestDir(), fileName.substring(0, fileName.lastIndexOf(".")));
+                return new Path(config.getDestDir(), fileName.substring(0, fileName.lastIndexOf(".")));
             } else {
                 return new Path(config.getDestDir(), srcFile.getPath().getName());
             }
@@ -285,6 +303,7 @@ public class WorkerThread extends Thread {
             return getDestPathFromScript(srcFile);
         }
     }
+
 
     private Path getDestPathFromScript(FileStatus srcFile) throws IOException {
         Path p = new Path(ScriptExecutor.getStdOutFromScript(config.getScript(), srcFile.getPath().toString(), 60, TimeUnit.SECONDS));
@@ -294,15 +313,25 @@ public class WorkerThread extends Thread {
         return p;
     }
 
-    private int discardCsvHeader(InputStream in)  {
-        if (in == null ) {
+    private Path getMergePathFromScript(FileStatus srcFile) throws IOException {
+        Path p = new Path(ScriptExecutor.getStdOutFromScript(config.getMergeScript(), srcFile.getPath().toString(), 60, TimeUnit.SECONDS));
+        if (p.toUri().getScheme() == null) {
+            throw new IOException("Destination path from script must be a URI with a scheme: '" + p + "'");
+        }
+        return p;
+    }
+
+    private int discardCsvHeader(InputStream in) {
+        if (in == null) {
             return 0;
         }
         int discardNum = 0;
         try {
 
-            while(in.read() != '\n')  {discardNum ++ ;}
-            discardNum ++;
+            while (in.read() != '\n') {
+                discardNum++;
+            }
+            discardNum++;
 
         } catch (IOException e) {
             return discardNum;

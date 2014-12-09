@@ -31,6 +31,7 @@ public class Config {
     private boolean csvHeader;
     private String mergeScript;
     private String unCompressType;
+    private boolean daemon;
 
     FileSystem srcFs;
     FileSystem destFs;
@@ -223,5 +224,42 @@ public class Config {
     public Config setUnCompressType(String unCompressType) {
         this.unCompressType = unCompressType;
         return this;
+    }
+
+    public boolean isDaemon() {
+        return daemon;
+    }
+
+    public Config setDaemon(boolean daemon) {
+        this.daemon = daemon;
+        return this;
+    }
+
+    @Override
+    public String toString() {
+        return "Config{" +
+                "datasource='" + datasource + '\'' +
+                ", codec=" + codec +
+                ", createLzopIndex=" + createLzopIndex +
+                ", srcDir=" + srcDir +
+                ", workDir=" + workDir +
+                ", completeDir=" + completeDir +
+                ", errorDir=" + errorDir +
+                ", destDir=" + destDir +
+                ", destStagingDir=" + destStagingDir +
+                ", script='" + script + '\'' +
+                ", workScript='" + workScript + '\'' +
+                ", remove=" + remove +
+                ", verify=" + verify +
+                ", numThreads=" + numThreads +
+                ", pollSleepPeriodMillis=" + pollSleepPeriodMillis +
+                ", csvHeader=" + csvHeader +
+                ", mergeScript='" + mergeScript + '\'' +
+                ", unCompressType='" + unCompressType + '\'' +
+                ", daemon=" + daemon +
+                ", srcFs=" + srcFs +
+                ", destFs=" + destFs +
+                ", config=" + config +
+                '}';
     }
 }

@@ -11,5 +11,5 @@
 
 # The location of the main hadoop script
 #
-export HADOOP_BIN=/home/hadoop/hadoop-2.4.0/bin/hadoop
+export HADOOP_BIN=/home/liftweb/hadoop-2.5.2/bin/hadoop
 

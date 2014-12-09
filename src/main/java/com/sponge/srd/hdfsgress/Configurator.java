@@ -44,7 +44,8 @@ public class Configurator {
         POLL_MILLIS,
         CSVHEADER,
         MERGESCRIPT,
-        UNCOMPRESSTYPE
+        UNCOMPRESSTYPE,
+        DAEMON,
     }
     private static Log log = LogFactory.getLog(Configurator.class);
 
@@ -108,13 +109,18 @@ public class Configurator {
         c.setScript(getConfigValue(props, ConfigNames.SCRIPT));
         c.setWorkScript(getConfigValue(props, ConfigNames.WORK_SCRIPT));
         c.setMergeScript(getConfigValue(props, ConfigNames.MERGESCRIPT));
-        c.setUnCompressType(getConfigValue(props,ConfigNames.UNCOMPRESSTYPE).equals("gzip") ? "gzip": null);
+        String val = getConfigValue(props, ConfigNames.UNCOMPRESSTYPE);
+        if (val != null ) {
+            val = val.equals("gzip") ? val : null;
+        }
+        c.setUnCompressType(val);
 
         // additional options
         //
         c.setRemove(isOptionEnabled(props, ConfigNames.REMOVE_AFTER_COPY));
         c.setVerify(isOptionEnabled(props, ConfigNames.VERIFY));
         c.setCsvHeader(isOptionEnabled(props, ConfigNames.CSVHEADER));
+        c.setDaemon(isOptionEnabled(props, ConfigNames.DAEMON));
         c.setNumThreads(getConfigValueAsInt(props, ConfigNames.THREADS, 1));
         c.setPollSleepPeriodMillis(getConfigValueAsInt(props, ConfigNames.POLL_MILLIS, 1000));
 
@@ -126,7 +132,11 @@ public class Configurator {
             throw new MutuallyExclusiveConfigsExist(ConfigNames.DEST_DIR, ConfigNames.SCRIPT);
         }
 
-        if(c.getDestDir() == null && c.getScript() == null) {
+        if(c.getDestDir() != null && c.getMergeScript() != null) {
+            throw new MutuallyExclusiveConfigsExist(ConfigNames.DEST_DIR, ConfigNames.MERGESCRIPT);
+        }
+
+        if(c.getDestDir() == null && c.getScript() == null && c.getMergeScript() == null) {
             throw new NoMutuallyExclusiveConfigsExist(ConfigNames.DEST_DIR, ConfigNames.SCRIPT);
         }
 
@@ -140,10 +150,6 @@ public class Configurator {
 
         if(c.getUnCompressType() != null && c.getCodec() != null) {
             throw new MutuallyExclusiveConfigsExist(ConfigNames.UNCOMPRESSTYPE, ConfigNames.COMPRESSION_CODEC);
-        }
-
-        if(c.getUnCompressType() == null && c.getCodec() == null) {
-            throw new NoMutuallyExclusiveConfigsExist(ConfigNames.UNCOMPRESSTYPE, ConfigNames.COMPRESSION_CODEC);
         }
     }
 

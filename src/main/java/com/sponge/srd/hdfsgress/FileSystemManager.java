@@ -5,6 +5,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Random;
@@ -29,7 +30,6 @@ public class FileSystemManager {
     }
 
     /**
-     *
      * @param unit
      * @param period
      * @return
@@ -45,6 +45,26 @@ public class FileSystemManager {
             unit.sleep(period);
         }
         return fs;
+    }
+
+    public boolean haveFiles()  {
+        try {
+            inboundDirLock.lockInterruptibly();
+            for (FileStatus fs : config.getSrcFs().listStatus(config.getSrcDir())) {
+                if (!fs.isDirectory()) {
+                    if (fs.getPath().getName().startsWith(".")) {
+                        log.debug("Ignoring hidden file '" + fs.getPath() + "'");
+                        continue;
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }catch (Exception e ) {
+            return false;
+        } finally {
+            inboundDirLock.unlock();
+        }
     }
 
     public FileStatus getInboundFile() throws IOException, InterruptedException {
@@ -76,14 +96,14 @@ public class FileSystemManager {
         if (config.isRemove()) {
             log.info("File copy successful, deleting source " + fs.getPath());
             success = config.getSrcFs().delete(fs.getPath(), false);
-            if(!success) {
+            if (!success) {
                 log.info("File deletion unsuccessful");
             }
         } else {
             Path completedPath = new Path(config.getCompleteDir(), fs.getPath().getName());
             log.info("File copy successful, moving source " + fs.getPath() + " to completed file " + completedPath);
             success = config.getSrcFs().rename(fs.getPath(), completedPath);
-            if(!success) {
+            if (!success) {
                 log.info("File move unsuccessful");
             }
         }

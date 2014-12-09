@@ -29,6 +29,7 @@ public class Gress extends Configured implements Tool {
     private static Log log = LogFactory.getLog(Gress.class);
     public static final String ARGS_CONFIG_FILE = "config-file";
     public static final String ARGS_LOG4J_FILE = "log4j-file";
+    public static final String ARGS_DAEMON = "d";
 
     private Config config;
 
