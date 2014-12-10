@@ -44,6 +44,7 @@ public class Configurator {
         POLL_MILLIS,
         CSVHEADER,
         MERGESCRIPT,
+        MERGE_DIR,
         UNCOMPRESSTYPE,
         DAEMON,
     }
@@ -109,6 +110,7 @@ public class Configurator {
         c.setScript(getConfigValue(props, ConfigNames.SCRIPT));
         c.setWorkScript(getConfigValue(props, ConfigNames.WORK_SCRIPT));
         c.setMergeScript(getConfigValue(props, ConfigNames.MERGESCRIPT));
+        c.setMergeDir(getConfigValue(props, ConfigNames.MERGE_DIR));
         String val = getConfigValue(props, ConfigNames.UNCOMPRESSTYPE);
         if (val != null ) {
             val = val.equals("gzip") ? val : null;
@@ -136,7 +138,20 @@ public class Configurator {
             throw new MutuallyExclusiveConfigsExist(ConfigNames.DEST_DIR, ConfigNames.MERGESCRIPT);
         }
 
-        if(c.getDestDir() == null && c.getScript() == null && c.getMergeScript() == null) {
+        if(c.getMergeDir() != null && c.getMergeScript() != null) {
+            throw new MutuallyExclusiveConfigsExist(ConfigNames.MERGE_DIR, ConfigNames.MERGESCRIPT);
+        }
+
+        if(c.getMergeDir() != null && c.getDestDir() != null) {
+            throw new MutuallyExclusiveConfigsExist(ConfigNames.MERGE_DIR, ConfigNames.DEST_DIR);
+        }
+
+        if(c.getMergeDir() != null && c.getScript() != null) {
+            throw new MutuallyExclusiveConfigsExist(ConfigNames.MERGE_DIR, ConfigNames.SCRIPT);
+        }
+
+
+        if(c.getDestDir() == null && c.getScript() == null && c.getMergeScript() == null && c.getMergeDir() == null) {
             throw new NoMutuallyExclusiveConfigsExist(ConfigNames.DEST_DIR, ConfigNames.SCRIPT);
         }
 

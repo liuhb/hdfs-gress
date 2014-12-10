@@ -22,6 +22,8 @@ public class ConfiguratorTest {
         out.write("ERROR_DIR = file:/tmp/gress/error\n");
         out.write("DEST_STAGING_DIR = hdfs:/incoming/stage\n");
         out.write("DEST_DIR = hdfs:/incoming\n");
+        out.write("MERGE_DIR = hdfs:/tmp/gress/dest/merge_file\n");
+
         out.close();
     }
 
@@ -29,6 +31,7 @@ public class ConfiguratorTest {
     public void testLoadProperty() throws Exception {
         Map<String, String> props = Configurator.loadProperties(confPath);
         assertEquals(Configurator.getConfigValue(props, Configurator.ConfigNames.DEST_DIR),"hdfs:/incoming");
+        assertEquals(Configurator.getConfigValue(props, Configurator.ConfigNames.MERGE_DIR),"hdfs:/tmp/gress/dest/merge_file");
         assertEquals(Configurator.getConfigValue(props, Configurator.ConfigNames.MERGESCRIPT), null);
         assertEquals(Configurator.isOptionEnabled(props, Configurator.ConfigNames.DAEMON), false);
         assertEquals(Configurator.isOptionEnabled(props, Configurator.ConfigNames.CSVHEADER), false);

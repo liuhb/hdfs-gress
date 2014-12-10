@@ -30,6 +30,7 @@ public class Config {
 
     private boolean csvHeader;
     private String mergeScript;
+    private String mergeDir;
     private String unCompressType;
     private boolean daemon;
 
@@ -232,6 +233,15 @@ public class Config {
 
     public Config setDaemon(boolean daemon) {
         this.daemon = daemon;
+        return this;
+    }
+
+    public String getMergeDir() {
+        return mergeDir;
+    }
+
+    public Config setMergeDir(String mergeDir) {
+        this.mergeDir = mergeDir;
         return this;
     }
 

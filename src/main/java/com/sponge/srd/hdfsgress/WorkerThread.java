@@ -111,12 +111,7 @@ public class WorkerThread extends Thread {
             // get the target HDFS file
             //
             Path destFile = null;
-            if (config.getMergeScript() != null) {
-                destFile = getMergePathFromScript(srcFileStatus);
-            } else {
-                destFile = getHdfsTargetPath(srcFileStatus);
-            }
-
+            destFile = getHdfsTargetPath(srcFileStatus);
             if (config.getCodec() != null) {
                 String ext = config.getCodec().getDefaultExtension();
                 if (!destFile.getName().endsWith(ext)) {
@@ -208,7 +203,7 @@ public class WorkerThread extends Thread {
                 verify(stagingFile, crc.getValue());
             }
 
-            if (config.getMergeScript() != null) {
+            if (config.getMergeScript() != null || config.getMergeDir() != null) {
 
                 log.info("Merge staging file '" + stagingFile + "' to destination '" + destFile + "'");
                 Utils.hdfsAppend(stagingFile, destFile, config.getConfig());
@@ -290,6 +285,13 @@ public class WorkerThread extends Thread {
     }
 
     private Path getHdfsTargetPath(FileStatus srcFile) throws IOException {
+        if (config.getMergeDir() != null || config.getMergeScript() != null) {
+           if (config.getMergeScript() != null ) {
+               return getDestPathFromScript(srcFile);
+           } else {
+               return new Path(config.getMergeDir());
+           }
+        }
         if (config.getDestDir() != null) {
             if (config.getCodec() != null) {
                 return new Path(config.getDestDir(), srcFile.getPath().getName() + config.getCodec().getDefaultExtension());
