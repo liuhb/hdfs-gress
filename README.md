@@ -50,7 +50,7 @@
 6.  "DEST_STAGING_DIR", hdfs上的缓存文件，待copy完成后mv 到目标文件夹
 7.  "DEST_DIR", 目标文件夹
 
-    必须的配置项
+    扩展配置项
 1. "COMPRESSION_CODEC"  支持文本文件的压缩方式，例如：org.apache.hadoop.io.compress.GzipCodec
 2. "CREATE_LZO_INDEX"   对于lzo压缩,是否创建lzo索引
 3. "VERIFY"             true 对上传文件进行crc32校验
@@ -63,9 +63,10 @@
 10. "MERGE_DIR"         指定合并后文件的全路径
 11. "DAEMON"            true 表示守护运行
 
-    注意：SCRIPT, MERGESCRIPT 和MERGE_DIR 互斥的，三者只能选其一
-          UNCOMPRESSTYPE 与 COMPRESSION_CODEC 互斥的，二者只能选其一
-          源文件是压缩文件，如果是gzip目前支持合并，且必须配置UNCOMPRESSTYPE选项。其他压缩格式不支持
+####    注意：
+    SCRIPT, MERGESCRIPT 和MERGE_DIR 互斥的，三者只能选其一
+    UNCOMPRESSTYPE 与 COMPRESSION_CODEC 互斥的，二者只能选其一
+    源文件是压缩文件，如果是gzip目前支持合并，且必须配置UNCOMPRESSTYPE选项。其他压缩格式不支持
 
 
 
