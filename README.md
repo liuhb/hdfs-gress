@@ -42,7 +42,6 @@
 ### gress.conf 的关键属性
 
     必须的配置项
-
 1.  "DATASOURCE_NAME", 逻辑数据源名称
 2.  "SRC_DIR", 原路径.
 3.  "WORK_DIR", 工作路径，copy文件时先copy到work_dir .
@@ -50,6 +49,24 @@
 5.  "ERROR_DIR", copy出错后保存到本地的错误文件
 6.  "DEST_STAGING_DIR", hdfs上的缓存文件，待copy完成后mv 到目标文件夹
 7.  "DEST_DIR", 目标文件夹
+
+    必须的配置项
+1. "COMPRESSION_CODEC"  支持文本文件的压缩方式，例如：org.apache.hadoop.io.compress.GzipCodec
+2. "CREATE_LZO_INDEX"   对于lzo压缩,是否创建lzo索引
+3. "VERIFY"             true 对上传文件进行crc32校验
+4. "SCRIPT"             生成目标文件夹的脚本（接受文件名输入,输出一行有效的hdfs全路径)
+5. "WORK_SCRIPT"        预处理源文件 （接受文件名输入,输出一行有效的本地文件全路径)
+6. "THREADS"            上传的线程数量
+7. "CSVHEADER"          true 对于csv文件去掉第一行
+8. "UNCOMPRESSTYPE"     源文件的压缩格式，指定压缩格式后，在上传过程中会解压后上传(目前支持gzip压缩格式)
+9. "MERGESCRIPT"        生成合并文件的全路径（接受文件名输入,输出一行有效的hdfs全路径)
+10. "MERGE_DIR"         指定合并后文件的全路径
+11. "DAEMON"            true 表示守护运行
+
+    注意：SCRIPT, MERGESCRIPT 和MERGE_DIR 互斥的，三者只能选其一
+          UNCOMPRESSTYPE 与 COMPRESSION_CODEC 互斥的，二者只能选其一
+          源文件是压缩文件，如果是gzip目前支持合并，且必须配置UNCOMPRESSTYPE选项。其他压缩格式不支持
+
 
 
 ### 实例 1
